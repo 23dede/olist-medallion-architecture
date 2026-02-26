@@ -1,0 +1,95 @@
+-- =============================================================
+-- DAX — KPI Measures (all in table: 'gold fact_sales_performance')
+-- Validated on 113 425 rows / 99 440 orders / R$15 843 553 gross CA
+-- =============================================================
+
+
+-- ── 1. TOTAL SALES (Gross) ────────────────────────────────────
+-- Simple SUM — use for card visuals and grand totals only
+-- Result: R$ 15 843 553.24
+
+Total Sales =
+SUM('gold fact_sales_performance'[total_order_value])
+-- Format: #,##0.00
+
+
+-- ── 2. TOTAL SALES (Full Months) ← PRIMARY TREND MEASURE ────
+-- Business rule: exclude months with statistically incomplete data
+--
+-- Dual-filter logic:
+--   A) Hard exclusion → August 2018 (known partial collection window)
+--   B) Auto threshold → any month < R$10 000 (catches boundary months
+--      automatically — future-proof, no hardcoding needed)
+--
+-- Clean analysis window: October 2016 → July 2018 (22 months)
+-- Auto-filtered: Sept-2016 (R$354), Dec-2016 (R$19),
+--                Aug-2018 (hardcoded), Sept-2018 (R$166), Oct-2018 (R$0)
+--
+-- ⚠️  Use THIS measure on all time-series / trend line visuals.
+--     Never use [Total Sales] on a line chart — it shows the cliff.
+
+"Total Sales (Full Months)" =
+VAR MontantBrut =
+    SUM('gold fact_sales_performance'[total_order_value])
+VAR IsAout2018 =
+    SELECTEDVALUE('Dim_Date'[Annee])       = 2018
+    && SELECTEDVALUE('Dim_Date'[Mois_Num]) = 8
+RETURN
+IF(
+    IsAout2018 || MontantBrut < 10000,
+    BLANK(),
+    MontantBrut
+)
+-- Format: #,##0.00
+
+
+-- ── 3. TOTAL ORDERS ──────────────────────────────────────────
+-- DISTINCTCOUNT deduplicates: one order with 3 items = 1 order
+-- Result: 99 440
+
+"Total Orders" =
+DISTINCTCOUNT('gold fact_sales_performance'[order_id])
+-- Format: #,##0
+
+
+-- ── 4. AVG DELIVERY DELAY ────────────────────────────────────
+-- Pre-computed in Gold SQL: (delivered_date - purchase_date) / 86400
+-- Global average: 12.6 days
+-- Trend: 15 days (2017) → 9-10 days (mid-2018) — operational improvement
+
+"Avg Delivery Delay" =
+AVERAGE('gold fact_sales_performance'[delivery_delay_days])
+-- Format: #,##0.0
+
+
+-- =============================================================
+-- NEXT RECOMMENDED MEASURES (commented out — ready to activate)
+-- =============================================================
+
+-- % On-Time Delivery
+-- "% On Time" =
+-- DIVIDE(
+--     COUNTROWS(FILTER('gold fact_sales_performance',
+--         'gold fact_sales_performance'[order_delivered_customer_date]
+--         <= 'gold fact_sales_performance'[order_estimated_delivery_date]
+--     )),
+--     [Total Orders]
+-- )
+-- Format: 0.0%
+
+-- Revenue YoY Growth
+-- "Sales YoY %" =
+-- VAR CurrentYear = [Total Sales]
+-- VAR PriorYear   = CALCULATE([Total Sales], SAMEPERIODLASTYEAR('Dim_Date'[Date]))
+-- RETURN
+-- IF(
+--     NOT ISBLANK(PriorYear),
+--     DIVIDE(CurrentYear - PriorYear, PriorYear),
+--     BLANK()
+-- )
+-- Format: +0.0%;-0.0%
+
+-- Avg Revenue per Order
+-- "Avg Order Value" =
+-- DIVIDE([Total Sales], [Total Orders])
+-- Format: #,##0.00
