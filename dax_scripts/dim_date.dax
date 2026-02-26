@@ -1,0 +1,53 @@
+-- =============================================================
+-- DAX — Dim_Date (Calculated Table)
+-- In Power BI Desktop: Modeling > New Table > paste expression
+-- Range : 2016-01-01 to 2018-12-31 | 1 096 rows | 15 columns
+-- =============================================================
+--
+-- ⚠️  CRITICAL — Relationship setup after table creation:
+--     gold fact_sales_performance[order_date]  →  Dim_Date[Date]
+--     Cardinality : Many-to-One
+--     Cross-filter direction : Single
+--
+-- ⚠️  CRITICAL — Sort 'Mois_Annee' column by 'Mois_Annee_Tri'
+--     (Column Tools > Sort by Column)
+--     Without this, months sort alphabetically, not chronologically.
+-- =============================================================
+
+Dim_Date =
+VAR MinDate = DATE(2016, 1, 1)
+VAR MaxDate = DATE(2018, 12, 31)
+RETURN
+ADDCOLUMNS(
+    CALENDAR(MinDate, MaxDate),
+
+    -- ── Year ───────────────────────────────────────────────
+    "Annee",             YEAR([Date]),
+
+    -- ── Month ──────────────────────────────────────────────
+    "Mois_Num",          MONTH([Date]),
+    "Mois_Nom",          FORMAT([Date], "MMMM"),
+    "Mois_Nom_Court",    FORMAT([Date], "MMM"),
+
+    -- ── Quarter ────────────────────────────────────────────
+    "Trimestre",         "T" & QUARTER([Date]),
+    "Trimestre_Num",     QUARTER([Date]),
+    "Annee_Trimestre",   YEAR([Date]) & "-T" & QUARTER([Date]),
+
+    -- ── Month-Year ─────────────────────────────────────────
+    -- Label  : "Jan 2017"  (use on chart axis)
+    -- Sort   : 201701      (numeric — sort Mois_Annee by this!)
+    "Mois_Annee",        FORMAT([Date], "MMM YYYY"),
+    "Mois_Annee_Tri",    YEAR([Date]) * 100 + MONTH([Date]),
+
+    -- ── Week ───────────────────────────────────────────────
+    "Semaine_Num",       WEEKNUM([Date], 2),
+
+    -- ── Day of week ────────────────────────────────────────
+    "Jour_Semaine_Num",  WEEKDAY([Date], 2),
+    "Jour_Semaine_Nom",  FORMAT([Date], "dddd"),
+    "Est_Weekend",       IF(WEEKDAY([Date], 2) >= 6, TRUE, FALSE),
+
+    -- ── Half-year ──────────────────────────────────────────
+    "Semestre",          IF(MONTH([Date]) <= 6, "S1", "S2")
+)
