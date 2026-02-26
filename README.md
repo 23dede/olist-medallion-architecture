@@ -191,6 +191,9 @@ gold fact_sales_performance[order_date]  ──Many-to-One──▶  Dim_Date[Da
 | `Total Orders` | `DISTINCTCOUNT([order_id])` | `#,##0` |
 | `Avg Delivery Delay` | `AVERAGE([delivery_delay_days])` | `#,##0.0` |
 
+> 💱 **Currency note — all monetary values are expressed in Brazilian Real (R$ / BRL).**
+> Olist is a Brazilian marketplace operating exclusively in Brazil. The source dataset contains no currency conversion — `price`, `freight_value`, and `total_order_value` are natively in BRL. No FX adjustment is required or applied anywhere in the pipeline.
+
 ---
 
 ## 🚀 How to Reproduce
