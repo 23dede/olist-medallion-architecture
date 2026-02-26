@@ -2,7 +2,7 @@
 
 > **End-to-end analytics pipeline** for the Brazilian e-commerce dataset [Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) — built with PostgreSQL, dbt-style SQL transformations, and Power BI DAX.
 
-**Stack:** PostgreSQL 15 · SQL (dbt-style) · Power BI Desktop · DAX · MCP Automation
+**Stack:** PostgreSQL 15 · SQL (dbt-style) · Power BI Desktop · DAX 
 
 ---
 
