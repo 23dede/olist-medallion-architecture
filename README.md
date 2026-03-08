@@ -14,6 +14,12 @@ The Power BI file is available directly in this repository.
 
 To open it, download the file and open it with Power BI Desktop. All data, relationships, DAX measures and visuals are included. No additional setup required.
 
+**Dashboard Overview**
+
+![Dashboard Overview](./assets/dashboard_overview.png)
+
+This dashboard provides a consolidated view of Olist's e-commerce performance across the full 2016–2018 period. It surfaces four core metrics at a glance: total revenue, total orders, average delivery delay, and peak sales month. The trend line at the center tracks monthly revenue evolution across 22 clean, fully comparable months — partial months at the boundaries of the dataset have been automatically filtered out via a dedicated DAX measure to avoid misleading dips or cliffs in the time series. The visual makes it immediately readable that Olist's revenue grew steadily through 2017, peaked in November 2017 (Black Friday Brazil), and maintained a high plateau through mid-2018.
+
 ---
 
 ## Architecture Overview
@@ -114,10 +120,6 @@ Result: 22 clean, fully comparable months from October 2016 to July 2018, presen
 ---
 
 ## Dashboard Insights
-
-![Olist Sales Overview](./assets/dashboard_overview.png)
-
-This dashboard demonstrates the stability of Olist's growth trajectory, made possible by the upstream data cleaning described above. Without the `Total Sales (Full Months)` measure, the trend line would show a misleading collapse at both ends of the time series.
 
 ### Key Metrics (validated in DAX — February 2026)
 
