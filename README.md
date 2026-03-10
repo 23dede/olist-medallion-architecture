@@ -14,11 +14,21 @@ The Power BI file is available directly in this repository.
 
 To open it, download the file and open it with Power BI Desktop. All data, relationships, DAX measures and visuals are included. No additional setup required.
 
-**Dashboard Overview**
+---
 
-![Dashboard Overview](./assets/dashboard_overview.png)
+## Dashboard Screenshots
 
-This dashboard provides a consolidated view of Olist's e-commerce performance across the full 2016–2018 period. It surfaces four core metrics at a glance: total revenue, total orders, average delivery delay, and peak sales month. The trend line at the center tracks monthly revenue evolution across 22 clean, fully comparable months — partial months at the boundaries of the dataset have been automatically filtered out via a dedicated DAX measure to avoid misleading dips or cliffs in the time series. The visual makes it immediately readable that Olist's revenue grew steadily through 2017, peaked in November 2017 (Black Friday Brazil), and maintained a high plateau through mid-2018.
+### Page 1 — Vue Generale des Ventes
+
+![Vue Generale des Ventes](./Olist%20E-Commerce%20%E2%80%94%20Vue%20G%C3%A9n%C3%A9rale%20des%20Ventes.png)
+
+This page provides a consolidated view of Olist's e-commerce performance across the full 2016–2018 period. It surfaces four core KPIs at a glance: total revenue (R$ 15.8M), total orders (99,441), average basket size (R$ 159) and average delivery delay (12 days). The trend line tracks monthly revenue evolution across 22 clean, fully comparable months — partial months have been automatically filtered out via a dedicated DAX measure. The donut chart breaks down order status distribution, confirming a 97% delivery rate. Bar charts compare revenue and order volume across 2016, 2017 and 2018, making the growth trajectory immediately readable.
+
+### Page 2 — Vendeurs & Logistique
+
+![Vendeurs et Logistique](./Olist%20E-Commerce%20%E2%80%94%20Vendeurs%20%26%20Logistique.png)
+
+This page focuses on seller performance and logistics analytics. Key metrics include: delivery success rate (97%), number of cancelled orders (625), median delivery delay (10 days), and average revenue per seller (R$ 5,117). The horizontal bar chart ranks top sellers by total sales volume. The column chart shows order distribution across months of the year, revealing seasonality patterns with a peak in Q4. The delivery delay analysis by order status highlights that cancelled orders have significantly higher average delays than delivered ones — a key operational insight.
 
 ---
 
@@ -54,7 +64,6 @@ olist-medallion-architecture/
 │   ├── dim_date.dax     # Calendar table (2016–2018, 15 columns)
 │   └── kpi_measures.dax # All KPI measures with business logic
 ├── assets/
-│   └── dashboard_overview.png
 ├── Graphe.pbix           # Power BI dashboard (ready to open)
 └── README.md
 ```
@@ -121,16 +130,20 @@ Result: 22 clean, fully comparable months from October 2016 to July 2018, presen
 
 ## Dashboard Insights
 
-### Key Metrics (validated in DAX — February 2026)
+### Key Metrics (validated in DAX — March 2026)
 
 | KPI | Value |
 |-----|-------|
 | Total Revenue (gross) | R$ 15,843,553 |
-| Total Orders | 99,440 |
-| Avg Delivery Delay | 12.6 days |
+| Total Orders | 99,441 |
+| Average Basket | R$ 159 |
+| Avg Delivery Delay | 12 days |
+| Delivery Rate | 97% |
+| Active Sellers | 3,095 |
+| Revenue per Seller | R$ 5,117 |
 | Peak month | November 2017 — R$ 1,179,143 (Black Friday Brazil) |
 | Clean analysis window | October 2016 to July 2018 (22 months) |
-| Delivery improvement | approximately 15 days avg (2017) to 9-10 days (mid-2018) |
+| Growth 2017 vs 2018 | +21% |
 
 ---
 
@@ -197,6 +210,12 @@ gold fact_sales_performance[order_date]  -->  Dim_Date[Date]  (Many-to-One)
 | `Total Sales (Full Months)` | Dual-filter business logic | `#,##0.00` |
 | `Total Orders` | `DISTINCTCOUNT([order_id])` | `#,##0` |
 | `Avg Delivery Delay` | `AVERAGE([delivery_delay_days])` | `#,##0.0` |
+| `Panier Moyen` | `DIVIDE([Total Sales], [Total Orders], 0)` | `#,##0.00 R$` |
+| `Nb Vendeurs Actifs` | `DISTINCTCOUNT([seller_id])` | `#,##0` |
+| `Nb Clients Uniques` | `DISTINCTCOUNT([customer_id])` | `#,##0` |
+| `Taux Livraison %` | `DIVIDE([Commandes Livrees], [Total Orders], 0)` | `0.0%` |
+| `Croissance 2017 vs 2018` | `DIVIDE([CA 2018] - [CA 2017], [CA 2017], 0)` | `+0.0%` |
+| `CA par Vendeur` | `DIVIDE([Total Sales], [Nb Vendeurs Actifs], 0)` | `#,##0.00 R$` |
 
 All monetary values are in Brazilian Real (R$ / BRL). Olist is a Brazilian marketplace operating exclusively in Brazil. No currency conversion is required or applied anywhere in the pipeline.
 
