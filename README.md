@@ -10,7 +10,7 @@ End-to-end analytics pipeline built on the Brazilian e-commerce dataset [Olist](
 
 The Power BI file is available directly in this repository.
 
-**File:** [Graphe.pbix](./Graphe.pbix)
+**File:** [Projet_Olist.pbix](./Projet_Olist.pbix)
 
 To open it, download the file and open it with Power BI Desktop. All data, relationships, DAX measures and visuals are included. No additional setup required.
 
@@ -47,7 +47,7 @@ CSV Sources (C:\olist_data)
   GOLD        Business-ready — fact table with pre-computed KPIs
         |
         v
-  POWER BI    Semantic layer — Dim_Date, DAX measures, validated visual model
+  POWER BI    Semantic layer — Dim_Date, DAX measures, 2-page dashboard
 ```
 
 ---
@@ -64,7 +64,9 @@ olist-medallion-architecture/
 │   ├── dim_date.dax     # Calendar table (2016–2018, 15 columns)
 │   └── kpi_measures.dax # All KPI measures with business logic
 ├── assets/
-├── Graphe.pbix           # Power BI dashboard (ready to open)
+├── Olist E-Commerce — Vue Generale des Ventes.png   # Dashboard Page 1 screenshot
+├── Olist E-Commerce — Vendeurs & Logistique.png     # Dashboard Page 2 screenshot
+├── Projet_Olist.pbix    # Power BI dashboard — 2 pages, 19 measures, real data
 └── README.md
 ```
 
@@ -114,9 +116,9 @@ IF(
 
 This measure applies a dual filter:
 - Hard exclusion of August 2018, a known incomplete month (R$1M revenue but partial data)
-- Automatic threshold of R$10,000 minimum — any month below this is statistically insignificant and automatically filtered, which future-proofs the measure against new boundary months without code changes
+- Automatic threshold of R$10,000 minimum — any month below this is statistically insignificant and automatically filtered
 
-Result: 22 clean, fully comparable months from October 2016 to July 2018, presenting only periods where the business was operating at full capacity.
+Result: 22 clean, fully comparable months from October 2016 to July 2018.
 
 | Month | Raw Revenue | Filtered Out | Reason |
 |-------|-------------|--------------|--------|
@@ -202,22 +204,31 @@ Semaine_Num | Jour_Semaine_Num | Jour_Semaine_Nom | Est_Weekend | Semestre
 gold fact_sales_performance[order_date]  -->  Dim_Date[Date]  (Many-to-One)
 ```
 
-### DAX Measures
+### DAX Measures (19 total)
 
-| Measure | Expression | Format |
-|---------|-----------|--------|
-| `Total Sales` | `SUM([total_order_value])` | `#,##0.00` |
-| `Total Sales (Full Months)` | Dual-filter business logic | `#,##0.00` |
-| `Total Orders` | `DISTINCTCOUNT([order_id])` | `#,##0` |
-| `Avg Delivery Delay` | `AVERAGE([delivery_delay_days])` | `#,##0.0` |
-| `Panier Moyen` | `DIVIDE([Total Sales], [Total Orders], 0)` | `#,##0.00 R$` |
-| `Nb Vendeurs Actifs` | `DISTINCTCOUNT([seller_id])` | `#,##0` |
-| `Nb Clients Uniques` | `DISTINCTCOUNT([customer_id])` | `#,##0` |
-| `Taux Livraison %` | `DIVIDE([Commandes Livrees], [Total Orders], 0)` | `0.0%` |
-| `Croissance 2017 vs 2018` | `DIVIDE([CA 2018] - [CA 2017], [CA 2017], 0)` | `+0.0%` |
-| `CA par Vendeur` | `DIVIDE([Total Sales], [Nb Vendeurs Actifs], 0)` | `#,##0.00 R$` |
+| Measure | Description | Folder |
+|---------|-------------|--------|
+| `Total Sales` | SUM of total_order_value | — |
+| `Total Sales (Full Months)` | Dual-filter business logic | — |
+| `Total Orders` | DISTINCTCOUNT of order_id | — |
+| `Avg Delivery Delay` | AVERAGE delivery_delay_days | — |
+| `Panier Moyen` | CA / Nb commandes | KPIs |
+| `Total Frais de Port` | SUM freight_value | KPIs |
+| `Taux Frais de Port %` | Frais / CA | KPIs |
+| `Nb Vendeurs Actifs` | DISTINCTCOUNT seller_id | KPIs |
+| `Nb Clients Uniques` | DISTINCTCOUNT customer_id | KPIs |
+| `Nb Produits Distincts` | DISTINCTCOUNT product_id | KPIs |
+| `CA Mois Precedent` | PREVIOUSMONTH CA | Evolution Temporelle |
+| `Croissance MoM %` | MoM growth rate | Evolution Temporelle |
+| `CA Cumule Annee` | YTD CA | Evolution Temporelle |
+| `CA 2017` | CA filtered on 2017 | Evolution Temporelle |
+| `CA 2018` | CA filtered on 2018 | Evolution Temporelle |
+| `Croissance 2017 vs 2018` | Year-over-year growth | Evolution Temporelle |
+| `Delai Livraison Max` | MAX delivery_delay_days | Logistique |
+| `Delai Livraison Median` | MEDIAN delivery_delay_days | Logistique |
+| `Taux Livraison %` | Delivered / Total orders | Logistique |
 
-All monetary values are in Brazilian Real (R$ / BRL). Olist is a Brazilian marketplace operating exclusively in Brazil. No currency conversion is required or applied anywhere in the pipeline.
+All monetary values are in Brazilian Real (R$ / BRL).
 
 ---
 
@@ -246,7 +257,7 @@ psql -d postgres -f dbt_models/gold/gold_fact_sales_performance.sql
 #    d) Sort Mois_Annee column by Mois_Annee_Tri
 ```
 
-Alternatively, download [Graphe.pbix](./Graphe.pbix) directly to explore the full model without any setup.
+Alternatively, download [Projet_Olist.pbix](./Projet_Olist.pbix) directly to explore the full model without any setup.
 
 ---
 
