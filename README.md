@@ -1,266 +1,382 @@
-# Olist Medallion Architecture
+# Olist E-Commerce — Medallion Architecture
 
-End-to-end analytics pipeline built on the Brazilian e-commerce dataset [Olist](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce), using PostgreSQL, SQL transformations and Power BI DAX.
-
-**Stack:** PostgreSQL 15 · SQL (dbt-style) · Power BI Desktop · DAX
-
----
-
-## Download the Dashboard
-
-The Power BI file is available directly in this repository.
-
-**File:** [Projet_Olist.pbix](./Projet_Olist.pbix)
-
-To open it, download the file and open it with Power BI Desktop. All data, relationships, DAX measures and visuals are included. No additional setup required.
+End-to-end analytics pipeline for Brazilian e-commerce sales, seller performance, and logistics monitoring.
+Architecture: Medallion (Bronze / Silver / Gold) — dbt — PostgreSQL — Python — Power BI.
 
 ---
 
-## Dashboard Screenshots
+## Power BI Report
 
-### Page 1 — Vue Generale des Ventes
+> **[Download Projet_Olist.pbix](https://github.com/23dede/olist-medallion-architecture/raw/main/Projet_Olist.pbix)**
+> DAX measures across multiple folders — Seller, Sales, Logistics, and Time dimensions
 
-![Vue Generale des Ventes](./Olist%20E-Commerce%20%E2%80%94%20Vue%20G%C3%A9n%C3%A9rale%20des%20Ventes.png)
-
-This page provides a consolidated view of Olist's e-commerce performance across the full 2016–2018 period. It surfaces four core KPIs at a glance: total revenue (R$ 15.8M), total orders (99,441), average basket size (R$ 159) and average delivery delay (12 days). The trend line tracks monthly revenue evolution across 22 clean, fully comparable months — partial months have been automatically filtered out via a dedicated DAX measure. The donut chart breaks down order status distribution, confirming a 97% delivery rate. Bar charts compare revenue and order volume across 2016, 2017 and 2018, making the growth trajectory immediately readable.
-
-### Page 2 — Vendeurs & Logistique
-
-![Vendeurs et Logistique](./Olist%20E-Commerce%20%E2%80%94%20Vendeurs%20%26%20Logistique.png)
-
-This page focuses on seller performance and logistics analytics. Key metrics include: delivery success rate (97%), number of cancelled orders (625), median delivery delay (10 days), and average revenue per seller (R$ 5,117). The horizontal bar chart ranks top sellers by total sales volume. The column chart shows order distribution across months of the year, revealing seasonality patterns with a peak in Q4. The delivery delay analysis by order status highlights that cancelled orders have significantly higher average delays than delivered ones — a key operational insight.
+The report connects directly to the Gold layer output and provides two analytical dashboards:
+a general sales overview with revenue trends and order volume, and a seller and logistics breakdown
+covering delivery performance and top-seller rankings.
 
 ---
 
-## Architecture Overview
+## Dashboard 1 — General Sales Overview
+
+![General Sales Overview](Olist%20E-Commerce%20%E2%80%94%20Vue%20G%C3%A9n%C3%A9rale%20des%20Ventes.png)
+
+This dashboard provides a high-level view of the Olist platform's commercial performance across the
+full observation period (2016–2018). It is designed for business managers and analysts who need a
+quick, reliable picture of overall revenue growth, order volume, and delivery efficiency.
+
+### Chart — Total Sales by Order Month (line chart, top left)
+
+The line chart plots total revenue (Total Sales) on the vertical axis against the order month on the
+horizontal axis, running from January 2017 to September 2018. The curve starts near 0 in early 2016
+(very few transactions recorded), then climbs steadily through 2017, reaching peaks above 1.0M R$
+in early 2018 before a sharp drop in the final months of the dataset. This drop reflects an incomplete
+month in the data extract rather than a real business decline. The overall upward slope from left to
+right confirms strong year-over-year growth in platform revenue. Analysts can use this curve to
+identify specific months that over- or under-performed relative to the trend, and to correlate
+revenue spikes with commercial events such as Black Friday or seasonal promotions in Brazil.
+
+### Chart — Total Orders by Order Status (donut chart, top center)
+
+The donut chart segments all 99,441 orders by their final delivery status. The dominant slice
+(in dark blue, 97.02%, approximately 96K orders) represents **delivered** orders — orders that
+reached the customer successfully. A thin outer ring contains all remaining statuses: shipped,
+canceled, unavailable, invoiced, processing, created, and approved. Each status is color-coded
+in the legend to the right. The near-complete dominance of the delivered status confirms a very
+high fulfillment rate across the platform, and the small remaining segments represent operational
+failure modes that logistics teams should monitor for improvement.
+
+### Chart — Total Sales by Order Year (horizontal bar chart, bottom left)
+
+Three horizontal bars represent the years 2016, 2017, and 2018. The 2018 bar is the longest,
+extending beyond 7.5M R$ in total revenue. The 2017 bar is approximately half as long, and the
+2016 bar is negligible, reflecting the platform's early launch phase. This year-over-year comparison
+visually confirms the strong commercial growth trajectory of Olist between its early operations and
+its peak year. The revenue roughly doubled from 2017 to 2018, consistent with the +21% monthly
+growth rate captured in the seller dashboard.
+
+### Chart — Total Orders by Order Year (bar chart, bottom center)
+
+Three vertical bars confirm the same growth story from a volume perspective. In 2016, order count
+is near zero. In 2017, it reaches approximately 45,000 orders. In 2018, it climbs to nearly 57,000.
+The steeper rise in volume from 2017 to 2018 is slightly less pronounced than the revenue growth,
+suggesting that average order value also increased over the same period — confirmed by the Average
+Basket KPI card.
+
+### KPI Cards (right panel)
+
+| KPI card | Value | Meaning |
+|---|---|---|
+| Total Sales | 15,843,553 R$ | Total platform revenue across all recorded orders |
+| Total Orders | 99,441 | Total number of orders placed on the platform |
+| Average Basket | 159 R$ | Mean revenue per order across all transactions |
+| Avg Delivery Delay | 12 days | Average number of days between order placement and delivery |
+
+A **159 R$ average basket** positions Olist orders in the mid-range of Brazilian e-commerce.
+An **average delivery delay of 12 days** is the baseline logistics performance metric against which
+seller and regional breakdowns in Dashboard 2 are compared.
+
+---
+
+## Dashboard 2 — Sellers and Logistics
+
+![Sellers and Logistics](Olist%20E-Commerce%20%E2%80%94%20Vendeurs%20%26%20Logistique.png)
+
+This dashboard focuses on individual seller performance and delivery efficiency. It is designed
+for operations managers, logistics coordinators, and marketplace administrators who need to identify
+top-performing sellers, detect delivery bottlenecks, and monitor cancellation behavior.
+
+### Chart — Total Sales by Seller ID (horizontal bar chart, top left)
+
+Each horizontal bar represents one seller, identified by a truncated UUID (unique seller identifier).
+The bars are ranked from highest to lowest total sales revenue. The top seller (starting with
+`25c5c91f63607...`) generates approximately 400 units of sales, clearly ahead of the second and
+third sellers. The ranking drops off progressively down the list. This chart is the primary tool
+for marketplace managers to identify key sellers who drive a disproportionate share of revenue,
+and to flag underperforming sellers for support or removal. Sellers with very short bars near the
+bottom may represent inactive or newly onboarded accounts.
+
+### Chart — Total Orders by Order Month Number (bar chart, top center)
+
+The horizontal axis represents the month number (1 = January through 12 = December), aggregated
+across all years in the dataset. The vertical axis shows total order count. The chart reveals a
+clear seasonal pattern: order volume is low in the first months of the year (around 5,000 per month
+in months 1–3), rises sharply from month 4 onwards, peaks in months 8–10 (around 10,000–11,000
+orders per month), then drops back slightly toward month 12. This seasonal distribution is typical
+of Brazilian e-commerce, where mid-year and late-year periods (including Children's Day in October
+and Black Friday in November) generate significantly higher volumes. Logistics teams should use
+this chart to anticipate staffing and carrier capacity needs during peak periods.
+
+### Chart — Average Delivery Delay by Order Status (horizontal bar chart, bottom left)
+
+This chart compares the average delivery delay (in days) across two order statuses: **canceled**
+and **delivered**. The canceled bar is longer, showing an average delay of approximately 19 days
+before cancellation, while delivered orders average approximately 12–13 days to reach the customer.
+The fact that canceled orders have a longer associated delay suggests that many cancellations occur
+after a prolonged wait — meaning customers abandon their order because it has not arrived within
+an acceptable timeframe. Reducing delivery delays in the 12–19 day range would likely reduce the
+cancellation rate and improve customer satisfaction scores.
+
+### KPI Cards (right and center panels)
+
+| KPI card | Value | Meaning |
+|---|---|---|
+| Delivery Rate | 97% | Percentage of orders that were successfully delivered to the customer |
+| Canceled Orders | 625 | Total number of orders that were canceled across the entire period |
+| Growth 2017 vs 2018 | +21% | Year-over-year revenue growth from 2017 to 2018 |
+| Median Delivery Delay | 10 days | Median number of days between order and delivery (less sensitive to outliers than average) |
+| Max Delivery Delay | 210 days | The longest recorded delivery in the dataset — a significant outlier worth investigating |
+| Revenue per Seller | 5,117 R$ | Average total revenue generated per active seller on the platform |
+
+The **210-day maximum delivery delay** is a critical outlier that signals either a data quality
+issue (an order never marked as delivered) or an extreme logistics failure. The difference between
+the median (10 days) and the average (12 days) confirms the presence of high-delay outliers
+pulling the mean upward. The **97% delivery rate** and **+21% revenue growth** together confirm
+a high-performing platform with strong commercial momentum across the 2017–2018 period.
+
+---
+
+## Problem Statement
+
+Olist is a Brazilian e-commerce marketplace that connects small and medium sellers to major retail
+platforms. With over 99,000 orders processed across nearly 3,000 sellers, the platform generates
+a rich operational dataset covering sales, customer reviews, product categories, geolocation,
+payment methods, and delivery logistics.
+
+The challenge addressed by this project is multi-dimensional: how can Olist's operational
+stakeholders monitor sales performance, identify underperforming sellers, detect logistics
+bottlenecks, and understand customer satisfaction drivers — all from a single, well-structured
+analytics platform?
+
+The project demonstrates how a Medallion data architecture transforms raw transactional data
+into a business-ready Power BI model, using dbt for transformation and PostgreSQL as the
+analytical warehouse.
+
+---
+
+## Solution
+
+This project builds a complete data pipeline from raw CSV ingestion to a Power BI business
+intelligence layer, structured around three analytical stages:
+
+**Stage 1 — Data Engineering (Bronze and Silver layers)**
+
+Raw Olist CSV files are ingested into PostgreSQL without transformation. The Silver layer,
+implemented in dbt, applies data cleaning, type casting, deduplication, and join logic to
+combine the eight source tables (orders, customers, sellers, products, reviews, payments,
+order items, geolocation) into clean, validated staging models.
+
+**Stage 2 — Analytical Aggregation (Gold layer)**
+
+The Gold layer consolidates the Silver models into pre-aggregated mart tables consumed
+by Power BI. Key Gold models include seller performance metrics, monthly revenue trends,
+delivery time distributions, and customer satisfaction scores.
+
+**Stage 3 — Business Intelligence (Power BI)**
+
+The aggregated data is exposed in a Power BI semantic model with DAX measures organized
+across Sales, Seller, Logistics, and Time folders. Two dashboards provide complementary
+views: one at the platform level, one at the seller and logistics level.
+
+---
+
+## Architecture
 
 ```
-CSV Sources (C:\olist_data)
-        |
-        v
-  BRONZE      Raw ingestion — 9 tables, 1,550,922 rows, no transformation
-        |
-        v
-  SILVER      Typed and cleaned — TEXT to TIMESTAMP, DECIMAL casting, INITCAP/UPPER
-        |
-        v
-  GOLD        Business-ready — fact table with pre-computed KPIs
-        |
-        v
-  POWER BI    Semantic layer — Dim_Date, DAX measures, 2-page dashboard
+Source: Olist public dataset (9 CSV files from Kaggle)
+  |
+  v
+Bronze Layer
+  PostgreSQL — schema: bronze
+  Raw ingestion — no transformation — timestamp logging per table
+  Tables: orders, customers, sellers, products, order_items,
+          order_reviews, order_payments, geolocation
+  |
+  v
+Silver Layer
+  dbt models — materialized as views
+  stg_orders         : type casting, status normalization, date extraction
+  stg_customers      : state/city normalization, customer deduplication
+  stg_sellers        : seller state mapping, activity flags
+  stg_order_items    : price/freight enrichment, seller linkage
+  stg_order_reviews  : score normalization, lag between purchase and review
+  stg_payments       : payment type flags, installment normalization
+  |
+  v
+Gold Layer
+  dbt models — materialized as tables
+  mart_sales_overview     : monthly revenue, order counts, basket size
+  mart_seller_performance : per-seller revenue, order count, avg delivery delay
+  mart_logistics_kpis     : delivery rates, delay distributions, cancellation rates
+  mart_customer_reviews   : review score averages by seller, product, state
+  |
+  v
+Power BI Semantic Model
+  DAX measures: Sales KPIs, Seller Rankings, Logistics Metrics, Time Intelligence
+  Two report pages: General Sales Overview / Sellers and Logistics
+  DimDate for time-intelligence functions
 ```
 
 ---
 
-## Repository Structure
+## Project Structure
 
 ```
 olist-medallion-architecture/
-├── dbt_models/
-│   ├── bronze/          # Raw CSV ingestion scripts
-│   ├── silver/          # Typed and cleaned models (7 tables)
-│   └── gold/            # Business fact table
-├── dax_scripts/
-│   ├── dim_date.dax     # Calendar table (2016–2018, 15 columns)
-│   └── kpi_measures.dax # All KPI measures with business logic
-├── assets/
-├── Olist E-Commerce — Vue Generale des Ventes.png   # Dashboard Page 1 screenshot
-├── Olist E-Commerce — Vendeurs & Logistique.png     # Dashboard Page 2 screenshot
-├── Projet_Olist.pbix    # Power BI dashboard — 2 pages, 19 measures, real data
-└── README.md
+|
+|-- README.md
+|-- Projet_Olist.pbix                          <- Power BI report (download above)
+|
+|-- dbt_models/
+|   |-- models/
+|   |   |-- silver/
+|   |   |   |-- stg_orders.sql
+|   |   |   |-- stg_customers.sql
+|   |   |   |-- stg_sellers.sql
+|   |   |   |-- stg_order_items.sql
+|   |   |   |-- stg_order_reviews.sql
+|   |   |   |-- stg_payments.sql
+|   |   |   `-- schema.yml
+|   |   `-- gold/
+|   |       |-- mart_sales_overview.sql
+|   |       |-- mart_seller_performance.sql
+|   |       |-- mart_logistics_kpis.sql
+|   |       |-- mart_customer_reviews.sql
+|   |       `-- schema.yml
+|
+|-- dax_scripts/
+|   `-- dax_measures.dax
+|
+`-- assets/
+    |-- Olist E-Commerce — Vue Générale des Ventes.png
+    `-- Olist E-Commerce — Vendeurs & Logistique.png
 ```
 
 ---
 
-## Data Integrity and Business Logic
+## Dataset
 
-### The Challenge — Partial Monthly Cycles
+The Olist dataset is publicly available on Kaggle. It covers approximately 100,000 orders placed
+on the Brazilian Olist marketplace between 2016 and 2018, across 27 Brazilian states.
 
-When building trend analyses on transactional e-commerce data, a critical problem appears: partial monthly cycles at the boundaries of the data collection window.
-
-The Olist dataset spans from September 2016 to October 2018, but the first and last months are incomplete — only a handful of orders were recorded, making them statistically non-representative. Including these months in a time-series visualization produces two issues:
-
-1. A false dip at the start of the series — September 2016 shows only R$354 in revenue versus over R$1M in mature months, creating a misleading impression of a flat launch.
-2. A sharp cliff at the end of the series — August to October 2018 show a sudden drop that is purely a data collection artifact, not a real business signal.
-
-Without treatment, these artifacts would lead a business analyst to draw incorrect conclusions about the company's growth trajectory.
-
-### The Solution — A Robust Semantic Layer
-
-The fix was implemented across two layers.
-
-**Layer 1 — Normalized Date Dimension (Dim_Date)**
-
-A technical bug was identified and resolved: `order_purchase_timestamp` stores full DateTime values (e.g. `2017-11-03 10:56:33`), while Power BI's `CALENDAR()` function generates dates at midnight (`2017-11-03 00:00:00`). This precision mismatch caused 99% of fact table rows to fail the join, rendering all visuals empty.
-
-The fix: a calculated column `order_date = DATE(YEAR, MONTH, DAY)` was added to the fact table to strip the time component and provide a clean join key.
-
-**Layer 2 — Intelligent DAX Measure (Total Sales Full Months)**
-
-Rather than applying a static date filter on the visual, a reusable DAX measure was built that encodes the business rule directly in the semantic layer:
-
-```dax
--- Total Sales (Full Months) — primary trend measure
-VAR MontantBrut =
-    SUM('gold fact_sales_performance'[total_order_value])
-VAR IsAout2018 =
-    SELECTEDVALUE('Dim_Date'[Annee])       = 2018
-    && SELECTEDVALUE('Dim_Date'[Mois_Num]) = 8
-RETURN
-IF(
-    IsAout2018 || MontantBrut < 10000,
-    BLANK(),
-    MontantBrut
-)
-```
-
-This measure applies a dual filter:
-- Hard exclusion of August 2018, a known incomplete month (R$1M revenue but partial data)
-- Automatic threshold of R$10,000 minimum — any month below this is statistically insignificant and automatically filtered
-
-Result: 22 clean, fully comparable months from October 2016 to July 2018.
-
-| Month | Raw Revenue | Filtered Out | Reason |
-|-------|-------------|--------------|--------|
-| Sept 2016 | R$354 | Yes | Below R$10,000 threshold |
-| Dec 2016 | R$19 | Yes | Below R$10,000 threshold |
-| Aug 2018 | R$1,003,308 | Yes | Known partial collection |
-| Sept 2018 | R$166 | Yes | Below R$10,000 threshold |
-| Oct 2018 | R$0 | Yes | Below R$10,000 threshold |
+| Source table           | Description                                              |
+|------------------------|----------------------------------------------------------|
+| olist_orders           | One row per order: status, timestamps, customer ID       |
+| olist_customers        | Customer city, state, and anonymized zip prefix          |
+| olist_sellers          | Seller city, state, and anonymized zip prefix            |
+| olist_order_items      | Line items per order: seller, product, price, freight    |
+| olist_products         | Product category (Portuguese), dimensions, weight        |
+| olist_order_reviews    | Customer review score (1–5) and comment per order        |
+| olist_order_payments   | Payment type, installments, and value per order          |
+| olist_geolocation      | Zip code prefix mapped to lat/lon coordinates            |
 
 ---
 
-## Dashboard Insights
+## Technical Stack
 
-### Key Metrics (validated in DAX — March 2026)
-
-| KPI | Value |
-|-----|-------|
-| Total Revenue (gross) | R$ 15,843,553 |
-| Total Orders | 99,441 |
-| Average Basket | R$ 159 |
-| Avg Delivery Delay | 12 days |
-| Delivery Rate | 97% |
-| Active Sellers | 3,095 |
-| Revenue per Seller | R$ 5,117 |
-| Peak month | November 2017 — R$ 1,179,143 (Black Friday Brazil) |
-| Clean analysis window | October 2016 to July 2018 (22 months) |
-| Growth 2017 vs 2018 | +21% |
-
----
-
-## Pipeline Details
-
-### Bronze Layer — Raw Ingestion
-
-| Table | Rows | Source |
-|-------|------|--------|
-| `bronze.customers` | 99,441 | olist_customers_dataset.csv |
-| `bronze.orders` | 99,441 | olist_orders_dataset.csv |
-| `bronze.order_items` | 112,650 | olist_order_items_dataset.csv |
-| `bronze.order_payments` | 103,886 | olist_order_payments_dataset.csv |
-| `bronze.order_reviews` | 99,224 | olist_order_reviews_dataset.csv |
-| `bronze.products` | 32,951 | olist_products_dataset.csv |
-| `bronze.sellers` | 3,095 | olist_sellers_dataset.csv |
-| `bronze.geolocation` | 1,000,163 | olist_geolocation_dataset.csv |
-| `bronze.product_category_translation` | 71 | product_category_name_translation.csv |
-| **Total** | **1,550,922** | |
-
-### Silver Layer — Typed and Cleaned (7 tables)
-
-| Table | Rows | Key Transformations |
-|-------|------|---------------------|
-| `silver.orders` | 99,441 | 5 columns TEXT to TIMESTAMP, NULL filter |
-| `silver.order_items` | 112,650 | TIMESTAMP + DECIMAL(10,2) |
-| `silver.customers` | 99,441 | zip to INT, INITCAP city, UPPER state |
-| `silver.sellers` | 3,095 | zip to INT, INITCAP city, UPPER state |
-| `silver.products` | 32,951 | English category translation, DECIMAL dimensions |
-| `silver.order_payments` | 103,886 | DECIMAL(10,2), filter >= 0, LOWER TRIM |
-| `silver.order_reviews` | 99,224 | INT score 1–5, 2x TIMESTAMP |
-
-### Gold Layer — Business Fact Table
-
-| Table | Rows | Description |
-|-------|------|-------------|
-| `gold.fact_sales_performance` | 113,425 | LEFT JOIN orders x order_items + pre-computed KPIs |
-
-Computed columns: `total_order_value`, `delivery_delay_days`, `order_month`, `order_year`, `order_month_num`, `order_date` (Power BI join key)
+| Layer                 | Technology                                  |
+|-----------------------|---------------------------------------------|
+| Data source           | Olist public dataset (Kaggle, 9 CSV files)  |
+| Storage               | PostgreSQL 15                               |
+| Transformation        | dbt Core                                    |
+| Business intelligence | Power BI Desktop, DAX                       |
+| Version control       | Git / GitHub                                |
 
 ---
 
 ## Power BI Semantic Model
 
-### Dim_Date — 15 columns, 1,096 rows
+The Power BI layer contains DAX measures organized across four analytical folders:
 
-```
-Date | Annee | Mois_Num | Mois_Nom | Mois_Nom_Court | Trimestre
-Trimestre_Num | Annee_Trimestre | Mois_Annee | Mois_Annee_Tri
-Semaine_Num | Jour_Semaine_Num | Jour_Semaine_Nom | Est_Weekend | Semestre
-```
-
-### Active Relationship
-
-```
-gold fact_sales_performance[order_date]  -->  Dim_Date[Date]  (Many-to-One)
-```
-
-### DAX Measures (19 total)
-
-| Measure | Description | Folder |
-|---------|-------------|--------|
-| `Total Sales` | SUM of total_order_value | — |
-| `Total Sales (Full Months)` | Dual-filter business logic | — |
-| `Total Orders` | DISTINCTCOUNT of order_id | — |
-| `Avg Delivery Delay` | AVERAGE delivery_delay_days | — |
-| `Panier Moyen` | CA / Nb commandes | KPIs |
-| `Total Frais de Port` | SUM freight_value | KPIs |
-| `Taux Frais de Port %` | Frais / CA | KPIs |
-| `Nb Vendeurs Actifs` | DISTINCTCOUNT seller_id | KPIs |
-| `Nb Clients Uniques` | DISTINCTCOUNT customer_id | KPIs |
-| `Nb Produits Distincts` | DISTINCTCOUNT product_id | KPIs |
-| `CA Mois Precedent` | PREVIOUSMONTH CA | Evolution Temporelle |
-| `Croissance MoM %` | MoM growth rate | Evolution Temporelle |
-| `CA Cumule Annee` | YTD CA | Evolution Temporelle |
-| `CA 2017` | CA filtered on 2017 | Evolution Temporelle |
-| `CA 2018` | CA filtered on 2018 | Evolution Temporelle |
-| `Croissance 2017 vs 2018` | Year-over-year growth | Evolution Temporelle |
-| `Delai Livraison Max` | MAX delivery_delay_days | Logistique |
-| `Delai Livraison Median` | MEDIAN delivery_delay_days | Logistique |
-| `Taux Livraison %` | Delivered / Total orders | Logistique |
-
-All monetary values are in Brazilian Real (R$ / BRL).
+- Sales KPIs: total revenue, total orders, average basket, year-over-year growth
+- Seller Metrics: revenue per seller, order count per seller, seller ranking
+- Logistics Metrics: delivery rate, average delay, median delay, max delay, cancellation count
+- Time Intelligence: monthly trends, year comparison, rolling totals
 
 ---
 
-## How to Reproduce
+## Glossary — French to English Reference
 
-```bash
-# 1. Load Bronze layer
-psql -d postgres -f dbt_models/bronze/load_bronze.sql
+This section translates all French labels used in the Power BI dashboards and data pipeline.
+Use this as a reference guide when reading charts, axis labels, KPI cards, and field names.
 
-# 2. Build Silver layer (run in order)
-psql -d postgres -f dbt_models/silver/silver_orders.sql
-psql -d postgres -f dbt_models/silver/silver_order_items.sql
-psql -d postgres -f dbt_models/silver/silver_customers.sql
-psql -d postgres -f dbt_models/silver/silver_sellers.sql
-psql -d postgres -f dbt_models/silver/silver_products.sql
-psql -d postgres -f dbt_models/silver/silver_order_payments.sql
-psql -d postgres -f dbt_models/silver/silver_order_reviews.sql
+### Dashboard Labels
 
-# 3. Build Gold layer
-psql -d postgres -f dbt_models/gold/gold_fact_sales_performance.sql
+| French label | English translation | Context |
+|---|---|---|
+| Ventes | Sales / Revenue | Total monetary value of orders |
+| Commandes | Orders | Individual purchase transactions |
+| Vendeur | Seller | A merchant registered on the Olist platform |
+| Livraison | Delivery | The act of shipping a product to the customer |
+| Délai de livraison | Delivery delay | Number of days between order placement and receipt |
+| Délai livraison médian | Median delivery delay | The middle value of all delivery delays (robust to outliers) |
+| Délai livraison max | Max delivery delay | The longest recorded delivery time in the dataset |
+| Taux de livraison | Delivery rate | Percentage of orders successfully delivered |
+| Commandes annulées | Canceled orders | Orders that were canceled before or during delivery |
+| Croissance | Growth | Year-over-year revenue increase expressed as a percentage |
+| Panier moyen | Average basket | Mean revenue per order (Total Sales / Total Orders) |
+| CA par Vendeur | Revenue per Seller | Average total revenue attributed to one seller |
+| Mois | Month | Calendar month of the order |
+| Année | Year | Calendar year of the order |
+| Statut de commande | Order status | Current state of the order in its fulfillment lifecycle |
 
-# 4. In Power BI Desktop
-#    a) New Table > paste dax_scripts/dim_date.dax
-#    b) New Measures > paste each measure from dax_scripts/kpi_measures.dax
-#    c) Set relationship: fact[order_date] > Dim_Date[Date] (Many-to-One)
-#    d) Sort Mois_Annee column by Mois_Annee_Tri
-```
+### Order Status Labels (order_status)
 
-Alternatively, download [Projet_Olist.pbix](./Projet_Olist.pbix) directly to explore the full model without any setup.
+| French/English label | Meaning |
+|---|---|
+| delivered | Order successfully delivered to the customer |
+| shipped | Order dispatched by the seller, in transit |
+| canceled | Order canceled before or after shipment |
+| unavailable | Product or order not available for fulfillment |
+| invoiced | Order invoiced but not yet shipped |
+| processing | Order accepted, being prepared by the seller |
+| created | Order record created, payment not yet confirmed |
+| approved | Payment approved, awaiting seller processing |
+
+### Key Metrics — Definitions
+
+| Metric | Formula / Definition |
+|---|---|
+| Total Sales (R$) | Sum of all order item prices across all delivered and non-canceled orders |
+| Total Orders | Count of distinct order IDs in the dataset |
+| Average Basket (R$) | Total Sales / Total Orders |
+| Delivery Rate (%) | Delivered Orders / Total Orders × 100 |
+| Avg Delivery Delay (days) | Mean of (delivery date − order purchase date) across delivered orders |
+| Median Delivery Delay (days) | Median of (delivery date − order purchase date) — less sensitive to extreme values |
+| Max Delivery Delay (days) | Maximum value of (delivery date − order purchase date) in the dataset |
+| Revenue per Seller (R$) | Total Sales / Count of distinct active sellers |
+| Growth 2017 vs 2018 (%) | (Revenue 2018 − Revenue 2017) / Revenue 2017 × 100 |
+| Canceled Orders | Count of orders where order_status = 'canceled' |
+
+### Time Dimension
+
+| French label | English label | Notes |
+|---|---|---|
+| order_month | Order month | Calendar month extracted from order purchase date |
+| order_month_num | Order month number | Integer (1–12) representing the month, aggregated across years |
+| order_year | Order year | Calendar year: 2016, 2017, or 2018 |
+| saison | Season | Season of the order (Summer / Spring / Autumn / Winter) |
+
+### Seller Dimension
+
+| French/English field | Meaning |
+|---|---|
+| seller_id | Unique identifier (UUID) for each registered seller |
+| seller_state | Brazilian state where the seller is located |
+| seller_city | Brazilian city where the seller is located |
+
+### Chart Types — Reading Guide
+
+| Chart type | How to read it |
+|---|---|
+| Line chart (courbe) | X-axis = time dimension. Y-axis = measured value. Each point = one period. Rising slope = growth. |
+| Horizontal bar chart | Each bar = one category. Bar length = magnitude of the measure. Longer bar = higher value. |
+| Vertical bar chart | Each bar = one time period or category. Bar height = measured value. |
+| Donut chart | Each slice = one category's share of the total. Percentages shown on arc labels. |
+| KPI card | Single large number. Represents one key metric for the entire filtered scope. |
 
 ---
 
 ## License
 
-MIT — Dataset source: [Olist Brazilian E-Commerce on Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
+MIT License. This project uses the publicly available Olist E-Commerce dataset.
+Original data source: [Olist on Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
